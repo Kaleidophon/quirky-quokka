@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch import optim
 from tqdm import tqdm as _tqdm
 import random
+import copy
 import gym
 
 
@@ -69,7 +70,7 @@ def compute_target(model, reward, next_state, done, discount_factor):
     targets = reward + ( model(next_state).max(1)[0] * discount_factor )  * (1-done.float())
     return targets.unsqueeze(1)
 
-def train(model, memory, optimizer, batch_size, discount_factor):
+def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     # DO NOT MODIFY THIS FUNCTION
 
     # don't learn without some decent experience
@@ -93,7 +94,8 @@ def train(model, memory, optimizer, batch_size, discount_factor):
     q_val = compute_q_val(model, state, action)
 
     with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
-        target = compute_target(model, reward, next_state, done, discount_factor)
+        model_ = model_2 if model_2 is not None else model
+        target = compute_target(model_, reward, next_state, done, discount_factor)
 
     # loss is measured from error between current and newly expected Q values
     loss = F.smooth_l1_loss(q_val, target)
@@ -107,10 +109,8 @@ def train(model, memory, optimizer, batch_size, discount_factor):
 
 
 
-def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate):
-
+def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2=None):
     optimizer = optim.Adam(model.parameters(), learn_rate)
-
     global_steps = 0 # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = [] #
     for i in range(num_episodes):
@@ -119,13 +119,14 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
         done = False
         while not done:
             steps += 1
+            if model_2 is not None and steps % 10 == 0:
+                model_2 = copy.deepcopy(model)
             eps = get_epsilon(global_steps)
-            # convert to PyTorch and define types
             action = select_action(model, state, eps)
             next_state, reward, done, _ = env.step(action)
             memory.push((state, action, reward, next_state, done))
             state = next_state
-            loss = train(model, memory, optimizer, batch_size, discount_factor)
+            loss = train(model, memory, optimizer, batch_size, discount_factor, model_2)
 
         episode_durations.append(steps)
         global_steps += steps
@@ -137,10 +138,13 @@ def smooth(x, N):
     cumsum = np.cumsum(np.insert(x, 0, 0))
     return (cumsum[N:] - cumsum[:-N]) / float(N)
 
-def plot_performance(episode_durations, name):
-    plt.plot(smooth(episode_durations, 10))
+def plot_exp_performance(exp):
+    plt.figure()
+    for episode_duration, name in exp:
+        plt.plot(smooth(episode_duration, 10), label=name)
     plt.title('Episode durations per episode')
-    plt.savefig(name + '.png')
+    plt.legend()
+    plt.savefig('exp.png')
 
 
 # Let's run it!
@@ -151,13 +155,26 @@ learn_rate = 1e-3
 memory = ReplayMemory(10000)
 num_hidden = 128
 seed = 42  # This is not randomly chosen
+env = gym.envs.make("CartPole-v0")
 
 # We will seed the algorithm (before initializing QNetwork!) for reproducability
 random.seed(seed)
 torch.manual_seed(seed)
 env.seed(seed)
 
-model = QNetwork(num_hidden)
 
-episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-plot_performance(episode_durations, 'Single_Q_learning')
+def run_single_dqn():
+
+    model = QNetwork(num_hidden)
+
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+    return episode_durations, 'Single DQN'
+def run_double_dqn():
+
+    model = QNetwork(num_hidden)
+    model_2 = QNetwork(num_hidden)
+
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
+    return episode_durations, 'Double DQN'
+exp =  [run_single_dqn(), run_double_dqn()]
+plot_exp_performance(exp)
