@@ -1,55 +1,25 @@
-import os
-import numpy as np
-import matplotlib.pyplot as plt
-import sys
-import torch
-from torch import nn
-import torch.nn.functional as F
-from torch import optim
-from tqdm import tqdm as _tqdm
+"""
+Defining training functions and experiments for the project.
+"""
+
+# STD
 import random
-import copy
+from copy import deepcopy
+
+# EXT
+import numpy as np
+import torch
+import torch.optim as optim
 import gym
+import torch.nn.functional as F
 
+# PROJECT
+from models import ReplayMemory, QNetwork
+from plotting import plot_exp_performance
 
-def tqdm(*args, **kwargs):
-    return _tqdm(*args, **kwargs, mininterval=1)  # Safety, do not overflow buffer
-
+# CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-
-
-
-class QNetwork(nn.Module):
-
-    def __init__(self,n_in, n_out, num_hidden=128):
-        nn.Module.__init__(self)
-        self.l1 = nn.Linear(n_in, num_hidden)
-        self.l2 = nn.Linear(num_hidden, n_out)
-
-    def forward(self, x):
-        out = self.l1(x)
-        out = F.relu(out)
-        out = self.l2(out)
-        return out
-
-
-
-class ReplayMemory:
-
-    def __init__(self, capacity):
-        self.capacity = capacity
-        self.memory = []
-
-    def push(self, transition):
-        if self.capacity == len(self.memory):
-            self.memory.pop(0)
-        self.memory.append(transition)
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)
+ENVIRONMENTS = ['CartPole-v1', 'Acrobot-v1']
 
 
 def get_epsilon(it):
@@ -64,15 +34,15 @@ def select_action(model, state, epsilon):
 
 def compute_q_val(model, state, action):
     action_index = torch.stack(action.chunk(state.size(0)))
-    return model(state).gather(1 ,action_index)
+    return model(state).gather(1, action_index)
+
 
 def compute_target(model, reward, next_state, done, discount_factor):
-    targets = reward + ( model(next_state).max(1)[0] * discount_factor )  * (1-done.float())
+    targets = reward + (model(next_state).max(1)[0] * discount_factor) * (1-done.float())
     return targets.unsqueeze(1)
 
-def train(model, memory, optimizer, batch_size, discount_factor, model_2):
-    # DO NOT MODIFY THIS FUNCTION
 
+def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     # don't learn without some decent experience
     if len(memory) < batch_size:
         return None
@@ -108,19 +78,21 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 
-
 def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2=None, update_target_q=10):
     optimizer = optim.Adam(model.parameters(), learn_rate)
-    global_steps = 0 # Count the steps (do not reset at episode start, to compute epsilon)
-    episode_durations = [] #
+    global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
+    episode_durations = []
+
     for i in range(num_episodes):
         steps = 0
         state = env.reset()
         done = False
         while not done:
             steps += 1
+
             if model_2 is not None and steps % update_target_q == 0:
-                model_2 = copy.deepcopy(model)
+                model_2 = deepcopy(model)
+
             eps = get_epsilon(global_steps)
             action = select_action(model, state, eps)
             next_state, reward, done, _ = env.step(action)
@@ -133,22 +105,6 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
     return episode_durations
 
 
-# And see the results
-def smooth(x, N):
-    cumsum = np.cumsum(np.insert(x, 0, 0))
-    return (cumsum[N:] - cumsum[:-N]) / float(N)
-
-def plot_exp_performance(exps):
-    for exp, env_name in exps:
-        plt.figure()
-        for episode_duration, exp_name in exp:
-            plt.plot(smooth(episode_duration, 10), label=exp_name)
-        plt.title('Episode durations per episode in ' + env_name )
-        plt.legend()
-        plt.savefig(env_name +'.png')
-
-
-
 def run_single_dqn(env):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
@@ -157,10 +113,11 @@ def run_single_dqn(env):
     episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
     return episode_durations
 
+
 def run_double_dqn(env):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
-    n_in  = len(env.observation_space.low)
+    n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
@@ -168,27 +125,28 @@ def run_double_dqn(env):
     return episode_durations
 
 
-# Let's run it!
-num_episodes = 100
-batch_size = 64
-discount_factor = 0.8
-learn_rate = 1e-3
-num_hidden = 128
-seed = 42  # This is not randomly chosen
-memory_size = 10000
-# We will seed the algorithm (before initializing QNetwork!) for reproducability
-random.seed(seed)
-torch.manual_seed(seed)
+if __name__ == "__main__":
+    # Let's run it!
+    num_episodes = 100
+    batch_size = 64
+    discount_factor = 0.8
+    learn_rate = 1e-3
+    num_hidden = 128
+    seed = 42  # This is not randomly chosen
+    memory_size = 10000
+    # We will seed the algorithm (before initializing QNetwork!) for reproducability
+    random.seed(seed)
+    torch.manual_seed(seed)
 
-# env that will be used
-env_names = ['CartPole-v1','Acrobot-v1']
-# init envs
-envs = [gym.envs.make(name) for name in env_names]
-# collect experiments
-exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
+    # init envs
+    envs = {name: gym.envs.make(name) for name in ENVIRONMENTS}
+    # collect experiments
+    exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
-# seed envs
-[env.seed(seed) for env in envs]
-# train
-exp_results =  [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env, env_name in zip(envs, env_names) ]
-plot_exp_performance(exp_results)
+    # seed envs
+    [env.seed(seed) for env in envs.values()]
+
+    # train
+    exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
+    plot_exp_performance(exp_results, path="./img")
+
