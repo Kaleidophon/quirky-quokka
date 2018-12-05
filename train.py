@@ -19,7 +19,7 @@ from plotting import plot_exp_performance
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ['CartPole-v1', 'Acrobot-v1']
+ENVIRONMENTS = ['MountainCar-v0']#'CartPole-v1'], 'Acrobot-v1']
 
 
 def get_epsilon(it):
@@ -78,10 +78,11 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 
-def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2=None, update_target_q=10):
+def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, num_hidden, model_2=None, update_target_q=10):
     optimizer = optim.Adam(model.parameters(), learn_rate)
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []
+    cum_reward = 0
 
     for i in range(num_episodes):
         steps = 0
@@ -96,13 +97,22 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             eps = get_epsilon(global_steps)
             action = select_action(model, state, eps)
             next_state, reward, done, _ = env.step(action)
+
+            # Adjust reward based on car position
+            reward = state[0] + 0.5
+
+            # Adjust reward for task completion
+            if state[0] >= 0.5:
+                reward += 1
+
+            cum_reward += reward
             memory.push((state, action, reward, next_state, done))
             state = next_state
             loss = train(model, memory, optimizer, batch_size, discount_factor, model_2)
 
         episode_durations.append(steps)
         global_steps += steps
-    return episode_durations
+    return episode_durations, cum_reward
 
 
 def run_single_dqn(env):
@@ -110,7 +120,7 @@ def run_single_dqn(env):
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, num_hidden)
     return episode_durations
 
 
@@ -121,25 +131,28 @@ def run_double_dqn(env):
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate,num_hidden, model_2)
     return episode_durations
 
 
 if __name__ == "__main__":
+
     # Let's run it!
-    num_episodes = 100
-    batch_size = 64
-    discount_factor = 0.8
-    learn_rate = 1e-3
+    num_episodes = 200
+    batch_size = 128
+    discount_factor = 0.99
+    learn_rate = 6e-4 #1e-3
     num_hidden = 128
     seed = 42  # This is not randomly chosen
     memory_size = 10000
+
     # We will seed the algorithm (before initializing QNetwork!) for reproducability
     random.seed(seed)
     torch.manual_seed(seed)
 
     # init envs
     envs = {name: gym.envs.make(name) for name in ENVIRONMENTS}
+
     # collect experiments
     exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
