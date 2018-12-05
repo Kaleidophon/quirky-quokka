@@ -16,6 +16,7 @@ import torch.nn.functional as F
 # PROJECT
 from models import ReplayMemory, QNetwork
 from plotting import plot_exp_performance, plot_exps_with_intervals
+from analyze import test_difference
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
@@ -153,13 +154,13 @@ if __name__ == "__main__":
     q_data = []
     dq_data = []
 
-    for run in range(5):
+    for run in range(10):
         print(f"Run #{run+1}...")
         q_data.append(run_single_dqn(envs["CartPole-v1"]))
         dq_data.append(run_single_dqn(envs["CartPole-v1"]))
 
     q_data = np.stack(q_data)
     dq_data = np.stack(dq_data)
-    plot_exps_with_intervals(q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png")
-
+    #plot_exps_with_intervals(q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png", smooth_curves=True)
+    test_difference(q_data, dq_data)
 
