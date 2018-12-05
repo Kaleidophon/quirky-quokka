@@ -15,7 +15,7 @@ import torch.nn.functional as F
 
 # PROJECT
 from models import ReplayMemory, QNetwork
-from plotting import plot_exp_performance
+from plotting import plot_exp_performance, plot_exps_with_intervals
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
@@ -147,6 +147,19 @@ if __name__ == "__main__":
     [env.seed(seed) for env in envs.values()]
 
     # train
-    exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
-    plot_exp_performance(exp_results, path="./img")
+    #exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
+    #plot_exp_performance(exp_results, path="./img")
+
+    q_data = []
+    dq_data = []
+
+    for run in range(5):
+        print(f"Run #{run+1}...")
+        q_data.append(run_single_dqn(envs["CartPole-v1"]))
+        dq_data.append(run_single_dqn(envs["CartPole-v1"]))
+
+    q_data = np.stack(q_data)
+    dq_data = np.stack(dq_data)
+    plot_exps_with_intervals(q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png")
+
 
