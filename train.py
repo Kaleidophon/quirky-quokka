@@ -4,7 +4,6 @@ Defining training functions and experiments for the project.
 
 # STD
 import random
-from copy import deepcopy
 
 # EXT
 import numpy as np
@@ -92,7 +91,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             steps += 1
 
             if model_2 is not None and steps % update_target_q == 0:
-                model_2 = deepcopy(model)
+                model_2.load_state_dict(model.state_dict())
 
             eps = get_epsilon(global_steps)
             action = select_action(model, state, eps)
@@ -161,6 +160,6 @@ if __name__ == "__main__":
 
     q_data = np.stack(q_data)
     dq_data = np.stack(dq_data)
-    #plot_exps_with_intervals(q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png", smooth_curves=True)
+    plot_exps_with_intervals(q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png", smooth_curves=True)
     test_difference(q_data, dq_data)
 
