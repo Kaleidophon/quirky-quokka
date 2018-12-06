@@ -16,8 +16,10 @@ def plot_exp_performance(exps, path):
     for exp, env_name in exps:
         plt.figure()
 
-        for episode_duration, exp_name in exp:
-            plt.plot(smooth(episode_duration, 10), label=exp_name)
+        for res, exp_name in exp:
+            episode_duration, cum_reward = res
+            plt.plot(smooth(episode_duration, 10), label=exp_name +  "episode duration")
+            #plt.plot(smooth(cum_reward, 10), label=exp_name + "cumulative reward")
         plt.title('Episode durations per episode in ' + env_name )
         plt.legend()
         plt.savefig(f"{path}/{env_name}.png")

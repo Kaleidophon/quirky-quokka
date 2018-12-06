@@ -19,7 +19,7 @@ from plotting import plot_exp_performance
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ['MountainCar-v0']#'CartPole-v1'], 'Acrobot-v1']
+ENVIRONMENTS = ['Acrobot-v1']#['MountainCar-v0'] #[MountainCarContinuous-v0]#'CartPole-v1'],
 
 
 def get_epsilon(it):
@@ -78,7 +78,7 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 
-def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, num_hidden, model_2=None, update_target_q=10):
+def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, num_hidden, update_target,model_2=None,):
     optimizer = optim.Adam(model.parameters(), learn_rate)
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []
@@ -91,19 +91,20 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
         while not done:
             steps += 1
 
-            if model_2 is not None and steps % update_target_q == 0:
+            if model_2 is not None and steps % update_target == 0:
                 model_2 = deepcopy(model)
 
             eps = get_epsilon(global_steps)
             action = select_action(model, state, eps)
             next_state, reward, done, _ = env.step(action)
 
+            # If environment is MountainCar, adjust rewards
             # Adjust reward based on car position
-            reward = state[0] + 0.5
+            #reward = state[0] + 0.5
 
             # Adjust reward for task completion
-            if state[0] >= 0.5:
-                reward += 1
+            #if state[0] >= 0.5:
+             #   reward += 1
 
             cum_reward += reward
             memory.push((state, action, reward, next_state, done))
@@ -112,7 +113,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
         episode_durations.append(steps)
         global_steps += steps
-    return episode_durations, cum_reward
+    return (episode_durations, cum_reward)
 
 
 def run_single_dqn(env):
@@ -120,7 +121,7 @@ def run_single_dqn(env):
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, num_hidden)
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, num_hidden,update_target)
     return episode_durations
 
 
@@ -131,7 +132,7 @@ def run_double_dqn(env):
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate,num_hidden, model_2)
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate,num_hidden,update_target, model_2)
     return episode_durations
 
 
@@ -141,14 +142,10 @@ if __name__ == "__main__":
     num_episodes = 200
     batch_size = 128
     discount_factor = 0.99
-    learn_rate = 6e-4 #1e-3
+    learn_rate = 0.001
     num_hidden = 128
-    seed = 42  # This is not randomly chosen
     memory_size = 10000
-
-    # We will seed the algorithm (before initializing QNetwork!) for reproducability
-    random.seed(seed)
-    torch.manual_seed(seed)
+    update_target = 10
 
     # init envs
     envs = {name: gym.envs.make(name) for name in ENVIRONMENTS}
@@ -157,9 +154,8 @@ if __name__ == "__main__":
     exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
     # seed envs
-    [env.seed(seed) for env in envs.values()]
+    #[env.seed(seed) for env in envs.values()]
 
     # train
     exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
     plot_exp_performance(exp_results, path="./img")
-
