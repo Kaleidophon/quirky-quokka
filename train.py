@@ -131,7 +131,7 @@ if __name__ == "__main__":
     batch_size = 64
     discount_factor = 0.8
     learn_rate = 1e-3
-    num_hidden = 128
+    num_hidden = 256
     seed = 42  # This is not randomly chosen
     memory_size = 10000
     # We will seed the algorithm (before initializing QNetwork!) for reproducability
@@ -153,13 +153,16 @@ if __name__ == "__main__":
     q_data = []
     dq_data = []
 
-    for run in range(10):
+    for run in range(3):
         print(f"Run #{run+1}...")
         q_data.append(run_single_dqn(envs["CartPole-v1"]))
         dq_data.append(run_single_dqn(envs["CartPole-v1"]))
 
     q_data = np.stack(q_data)
     dq_data = np.stack(dq_data)
-    plot_exps_with_intervals(q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png", smooth_curves=True)
+    plot_exps_with_intervals(
+        q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png",
+        smooth_curves=False, true_q=150, true_dq=136.4  # Dummy values
+    )
     test_difference(q_data, dq_data)
 

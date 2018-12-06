@@ -23,7 +23,8 @@ def plot_exp_performance(exps, path):
         plt.savefig(f"{path}/{env_name}.png")
 
 
-def plot_exps_with_intervals(q_data: np.array, double_q_data: np.array, title, file_name, smooth_curves=False):
+def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, title, file_name, true_q: float=None,
+                             true_dq: float=None, smooth_curves=False):
     """
     Plot scores with intervals. Expects a K x D matrix with K trials with D data points each.
     """
@@ -41,7 +42,7 @@ def plot_exps_with_intervals(q_data: np.array, double_q_data: np.array, title, f
 
     # Get the median, lower and upper curves
     q_lower, q_median, q_upper = get_curves(q_data)
-    dq_lower, dq_median, dq_upper = get_curves(double_q_data)
+    dq_lower, dq_median, dq_upper = get_curves(dq_data)
 
     # Plot everything
     x = np.arange(0, q_lower.shape[0])
@@ -53,7 +54,13 @@ def plot_exps_with_intervals(q_data: np.array, double_q_data: np.array, title, f
     plt.fill_between(x, dq_upper, dq_median, facecolor="lightsteelblue", alpha=0.6)
     plt.fill_between(x, dq_median, dq_lower, facecolor="lightsteelblue", alpha=0.6)
 
+    # If the true values are given, plot them as a straight line
+    if true_q is not None:
+        plt.axhline(true_q, label="True DQN value", color="firebrick", linestyle='dashed')
+    if true_dq is not None:
+        plt.axhline(true_dq, label="True Double DQN value", color="lightsteelblue", linestyle='dashed')
+
     plt.title(title)
-    plt.legend()
+    plt.legend(fontsize=10)
 
     plt.savefig(file_name)
