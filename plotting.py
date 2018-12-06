@@ -64,13 +64,9 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, tit
 
     # Emphasize significant values if given
     if significant_values is not None:
-        plt.scatter(significant_values, np.zeros(significant_values.shape), marker="", color="black", alpha=0.7)
-        #for value in significant_values:
-        #    plt.axvline(value, color="gray", linestyle="dashed", linewidth=1)
+        plt.scatter(significant_values, np.zeros(significant_values.shape) - 2, marker="|", color="black")
 
-    if title is not None:
-        plt.title(title)
-
+    plt.title(title)
     plt.legend(fontsize=8)
 
     plt.savefig(file_name)

@@ -15,7 +15,7 @@ import torch.nn.functional as F
 # PROJECT
 from models import ReplayMemory, QNetwork
 from plotting import plot_exp_performance, plot_exps_with_intervals
-from analyze import test_difference, get_actual_returns
+from analyze import test_difference, get_actual_returns, test_gaussian
 from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     #exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
     #plot_exp_performance(exp_results, path="./img")
 
-    k = 5  # Number of models being trained
+    k = 10  # Number of models being trained
     env = envs["CartPole-v1"]
     hyperparams = HYPERPARAMETERS["CartPole-v1"]
     q_models, dq_models = [], []
@@ -171,7 +171,11 @@ if __name__ == "__main__":
     true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
     true_dq = get_actual_returns(env, dq_models, hyperparams["discount_factor"])
 
-    # So significance-testing
+    #for data in ["q_scores", "q_durations", "q_rewards", "dq_scores", "dq_durations", "dq_rewards"]:
+    #    print(data)
+    #    test_gaussian(eval(data))
+
+    # Do significance-testing
     print("Q-values")
     _, significant_scores = test_difference(q_scores, dq_scores)
     print("Rewards")

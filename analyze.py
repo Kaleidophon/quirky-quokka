@@ -4,11 +4,8 @@ Implement functions to analyze the data gathered.
 
 # EXT
 import numpy as np
-from scipy.stats import ttest_ind
+from scipy.stats import mannwhitneyu, shapiro
 import torch
-
-# PROJECT
-from models import QNetwork
 
 
 def test_difference(q_data: np.array, dq_data: np.array, p_threshold=0.05):
@@ -18,16 +15,38 @@ def test_difference(q_data: np.array, dq_data: np.array, p_threshold=0.05):
     for the two models, NOT assuming equal variance).
     Input is expected to by a K x D matrix of K trials with D data points each.
     """
-    _, p_values = ttest_ind(q_data, dq_data, axis=0, equal_var=False)
+    timesteps = q_data.shape[1]
+    p_values = np.zeros(timesteps)
+
+    for t in range(timesteps):
+        _, p_values[t] = mannwhitneyu(q_data[:, t], dq_data[:, t], alternative="two-sided")
 
     significant_timesteps = p_values <= p_threshold
     sig = np.sum(significant_timesteps)  # Number of time steps with significant differences
     percentage_sig = sig / len(p_values) * 100  # Percentage of those significant instances
     print(f"There is a significant difference for {sig}/{len(p_values)} ({percentage_sig:.2f} %) data points.")
 
-    significant_timesteps = np.where(significant_timesteps == 1)[0]  # Remember the timesteps for plotting
+    significant_timesteps = np.where(significant_timesteps)[0]  # Remember the timesteps for plotting
 
     return p_values, significant_timesteps
+
+
+def test_gaussian(data, p_threshold=0.05):
+    """
+    Test whether the distributions over multiple timesteps are normal distributions using a Shapiro-Wilk Test.
+    """
+    timesteps = data.shape[1]
+    p_values = np.zeros(timesteps)
+
+    for t in range(timesteps):
+        _, p_values[t] = shapiro(data[:, t])
+
+    significant_timesteps = p_values <= p_threshold
+    sig = np.sum(significant_timesteps)  # Number of time steps with significant differences
+    percentage_sig = sig / len(p_values) * 100  # Percentage of those significant instances
+    print(f"{sig}/{len(p_values)} ({percentage_sig:.2f} %) distributions can be assumed to be gaussian.")
+
+    return p_values
 
 
 def get_actual_returns(env, models: list, discount_factor):
