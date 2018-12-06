@@ -5,6 +5,10 @@ Implement functions to analyze the data gathered.
 # EXT
 import numpy as np
 from scipy.stats import ttest_ind
+import torch
+
+# PROJECT
+from models import QNetwork
 
 
 def test_difference(q_data: np.array, dq_data: np.array, p_threshold=0.05):
@@ -21,3 +25,38 @@ def test_difference(q_data: np.array, dq_data: np.array, p_threshold=0.05):
     print(f"There is a significant difference for {sig}/{len(p_values)} ({percentage_sig:.2f} %) data points.")
 
     return p_values
+
+
+def get_actual_returns(env, models: list, discount_factor):
+    """
+    Calculate the actual average cumulative discounted returns for all visited states by using trained models
+    and recording the actual returns.
+    """
+    def simulate_episode(model, env):
+        returns = []
+        state = env.reset()
+        done = False
+
+        while not done:
+            # Select action
+            actions = model(torch.Tensor(state))
+            action = torch.argmax(actions).item()
+            next_state, reward, done, _ = env.step(action)
+            returns.append(reward)  # Remember encountered rewards
+
+            # Prepare for next iter
+            state = next_state
+
+        return returns
+
+    all_returns = []
+
+    for model in models:
+        returns = simulate_episode(model, env)
+
+        G = 0  # Cumulative rewards
+        for return_ in returns[::-1]:
+            G = return_ + discount_factor * G
+            all_returns.append(G)
+
+    return sum(all_returns) / len(all_returns)

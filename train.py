@@ -15,7 +15,7 @@ import torch.nn.functional as F
 # PROJECT
 from models import ReplayMemory, QNetwork
 from plotting import plot_exp_performance, plot_exps_with_intervals
-from analyze import test_difference
+from analyze import test_difference, get_actual_returns
 from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
@@ -112,7 +112,7 @@ def run_single_dqn(env, memory_size, num_hidden, batch_size, discount_factor, le
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
     episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-    return episode_durations
+    return model, episode_durations
 
 
 def run_double_dqn(env, memory_size, num_hidden, batch_size, discount_factor, learn_rate, update_target_q):
@@ -124,7 +124,7 @@ def run_double_dqn(env, memory_size, num_hidden, batch_size, discount_factor, le
 
     episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate,
                                      model_2, update_target_q)
-    return episode_durations
+    return model, episode_durations
 
 
 if __name__ == "__main__":
@@ -140,19 +140,34 @@ if __name__ == "__main__":
     #exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
     #plot_exp_performance(exp_results, path="./img")
 
+    env = envs["CartPole-v1"]
+    hyperparams = HYPERPARAMETERS["CartPole-v1"]
     q_data = []
+    q_models = []
     dq_data = []
+    dq_models = []
 
-    for run in range(3):
+    for run in range(5):
         print(f"Run #{run+1}...")
-        q_data.append(run_single_dqn(envs["CartPole-v1"], **HYPERPARAMETERS["CartPole-v1"]))
-        dq_data.append(run_single_dqn(envs["CartPole-v1"], **HYPERPARAMETERS["CartPole-v1"]))
+        q_model, q_score = run_single_dqn(env, **hyperparams)
+        dq_model, dq_score = run_single_dqn(env, **hyperparams)
+
+        q_models.append(q_model)
+        q_data.append(q_score)
+        dq_models.append(dq_model)
+        dq_data.append(dq_score)
 
     q_data = np.stack(q_data)
     dq_data = np.stack(dq_data)
+
+    true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
+    true_dq = get_actual_returns(env, dq_models, hyperparams["discount_factor"])
+    print(true_q, true_dq)
+
     plot_exps_with_intervals(
         q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png",
-        smooth_curves=False, true_q=150, true_dq=136.4  # Dummy values
+        smooth_curves=False, true_q=true_q, true_dq=true_dq  # Dummy values
     )
     test_difference(q_data, dq_data)
+
 
