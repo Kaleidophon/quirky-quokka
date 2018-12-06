@@ -19,7 +19,8 @@ from plotting import plot_exp_performance
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ['CartPole-v1', 'Acrobot-v1']
+#ENVIRONMENTS = ['CartPole-v1', 'Acrobot-v1']
+ENVIRONMENTS = ['CartPole-v1']
 
 
 def get_epsilon(it):
@@ -45,7 +46,7 @@ def compute_target(model, reward, next_state, done, discount_factor):
 def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     # don't learn without some decent experience
     if len(memory) < batch_size:
-        return None
+        return None, None, None
 
     # random transition batch is taken from experience replay memory
     transitions = memory.sample(batch_size)
@@ -74,7 +75,6 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
-
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 
@@ -86,6 +86,8 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
     for i in range(num_episodes):
         steps = 0
         state = env.reset()
+        q_vals = []
+        cum_reward = 0
         done = False
         while not done:
             steps += 1
@@ -95,14 +97,20 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             eps = get_epsilon(global_steps)
             action = select_action(model, state, eps)
+
+            q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float), torch.tensor([action], dtype=torch.int64))
+            q_vals.append(q_val.detach().numpy().squeeze().tolist())
+
             next_state, reward, done, _ = env.step(action)
+            cum_reward += reward
+
             memory.push((state, action, reward, next_state, done))
             state = next_state
             loss = train(model, memory, optimizer, batch_size, discount_factor, model_2)
 
         episode_durations.append(steps)
         global_steps += steps
-    return episode_durations
+    return episode_durations, q_vals, cum_reward
 
 
 def run_single_dqn(env):
@@ -110,8 +118,9 @@ def run_single_dqn(env):
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-    return episode_durations
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+    print(episode_durations, q_vals, cum_reward)
+    return episode_durations, q_vals, cum_reward
 
 
 def run_double_dqn(env):
@@ -121,13 +130,13 @@ def run_double_dqn(env):
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
-    return episode_durations
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
+    return episode_durations, q_vals, cum_reward
 
 
 if __name__ == "__main__":
     # Let's run it!
-    num_episodes = 100
+    num_episodes = 20
     batch_size = 64
     discount_factor = 0.8
     learn_rate = 1e-3
@@ -148,5 +157,5 @@ if __name__ == "__main__":
 
     # train
     exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
-    plot_exp_performance(exp_results, path="./img")
-
+    print(exp_results)
+    #plot_exp_performance(exp_results, path="./img")
