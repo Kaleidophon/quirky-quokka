@@ -61,6 +61,6 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, title, file_na
         plt.axhline(true_dq, label="True Double DQN value", color="lightsteelblue", linestyle='dashed')
 
     plt.title(title)
-    plt.legend(fontsize=10)
+    plt.legend(fontsize=8)
 
     plt.savefig(file_name)

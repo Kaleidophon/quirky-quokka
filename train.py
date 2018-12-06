@@ -16,6 +16,7 @@ import torch.nn.functional as F
 from models import ReplayMemory, QNetwork
 from plotting import plot_exp_performance, plot_exps_with_intervals
 from analyze import test_difference
+from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
@@ -105,7 +106,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
     return episode_durations
 
 
-def run_single_dqn(env):
+def run_single_dqn(env, memory_size, num_hidden, batch_size, discount_factor, learn_rate, **hyper):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
@@ -114,37 +115,26 @@ def run_single_dqn(env):
     return episode_durations
 
 
-def run_double_dqn(env):
+def run_double_dqn(env, memory_size, num_hidden, batch_size, discount_factor, learn_rate, update_target_q):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate,
+                                     model_2, update_target_q)
     return episode_durations
 
 
 if __name__ == "__main__":
     # Let's run it!
     num_episodes = 100
-    batch_size = 64
-    discount_factor = 0.8
-    learn_rate = 1e-3
-    num_hidden = 256
-    seed = 42  # This is not randomly chosen
-    memory_size = 10000
-    # We will seed the algorithm (before initializing QNetwork!) for reproducability
-    random.seed(seed)
-    torch.manual_seed(seed)
 
     # init envs
     envs = {name: gym.envs.make(name) for name in ENVIRONMENTS}
     # collect experiments
     exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
-
-    # seed envs
-    [env.seed(seed) for env in envs.values()]
 
     # train
     #exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
@@ -155,8 +145,8 @@ if __name__ == "__main__":
 
     for run in range(3):
         print(f"Run #{run+1}...")
-        q_data.append(run_single_dqn(envs["CartPole-v1"]))
-        dq_data.append(run_single_dqn(envs["CartPole-v1"]))
+        q_data.append(run_single_dqn(envs["CartPole-v1"], **HYPERPARAMETERS["CartPole-v1"]))
+        dq_data.append(run_single_dqn(envs["CartPole-v1"], **HYPERPARAMETERS["CartPole-v1"]))
 
     q_data = np.stack(q_data)
     dq_data = np.stack(dq_data)
