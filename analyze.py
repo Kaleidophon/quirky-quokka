@@ -20,11 +20,14 @@ def test_difference(q_data: np.array, dq_data: np.array, p_threshold=0.05):
     """
     _, p_values = ttest_ind(q_data, dq_data, axis=0, equal_var=False)
 
-    sig = np.sum(p_values <= p_threshold)  # Number of time steps with significant differences
+    significant_timesteps = p_values <= p_threshold
+    sig = np.sum(significant_timesteps)  # Number of time steps with significant differences
     percentage_sig = sig / len(p_values) * 100  # Percentage of those significant instances
     print(f"There is a significant difference for {sig}/{len(p_values)} ({percentage_sig:.2f} %) data points.")
 
-    return p_values
+    significant_timesteps = np.where(significant_timesteps == 1)[0]  # Remember the timesteps for plotting
+
+    return p_values, significant_timesteps
 
 
 def get_actual_returns(env, models: list, discount_factor):

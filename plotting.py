@@ -23,11 +23,13 @@ def plot_exp_performance(exps, path):
         plt.savefig(f"{path}/{env_name}.png")
 
 
-def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, title, file_name, true_q: float=None,
-                             true_dq: float=None, smooth_curves=False):
+def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, title=None, significant_values=None,
+                             true_q: float=None, true_dq: float=None, smooth_curves=False):
     """
     Plot scores with intervals. Expects a K x D matrix with K trials with D data points each.
     """
+    assert q_data.shape[0] > 1 and dq_data.shape[0] > 1, "At least two trials per model are necessary to create this plot!"
+
     def get_curves(data):
         median = np.median(data, axis=0)
 
@@ -60,7 +62,17 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, title, file_na
     if true_dq is not None:
         plt.axhline(true_dq, label="True Double DQN value", color="lightsteelblue", linestyle='dashed')
 
-    plt.title(title)
+    # Emphasize significant values if given
+    if significant_values is not None:
+        plt.scatter(significant_values, np.zeros(significant_values.shape), marker="", color="black", alpha=0.7)
+        #for value in significant_values:
+        #    plt.axvline(value, color="gray", linestyle="dashed", linewidth=1)
+
+    if title is not None:
+        plt.title(title)
+
     plt.legend(fontsize=8)
 
     plt.savefig(file_name)
+
+    plt.close()

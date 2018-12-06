@@ -83,10 +83,14 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
     optimizer = optim.Adam(model.parameters(), learn_rate)
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []
+    q_vals = []
+    episode_rewards = []
 
     for i in range(num_episodes):
         steps = 0
         state = env.reset()
+        episode_q_vals = []
+        cum_reward = 0
         done = False
         while not done:
             steps += 1
@@ -96,14 +100,22 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             eps = get_epsilon(global_steps)
             action = select_action(model, state, eps)
+
+            q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float), torch.tensor([action], dtype=torch.int64))
+            episode_q_vals.append(q_val.detach().numpy().squeeze().tolist())
+
             next_state, reward, done, _ = env.step(action)
+            cum_reward += reward
+
             memory.push((state, action, reward, next_state, done))
             state = next_state
             loss = train(model, memory, optimizer, batch_size, discount_factor, model_2)
-
+        q_vals.append(np.mean(episode_q_vals))
         episode_durations.append(steps)
         global_steps += steps
-    return episode_durations
+        episode_rewards.append(cum_reward)
+
+    return episode_durations, q_vals, episode_rewards
 
 
 def run_single_dqn(env, memory_size, num_hidden, batch_size, discount_factor, learn_rate, **hyper):
@@ -111,8 +123,9 @@ def run_single_dqn(env, memory_size, num_hidden, batch_size, discount_factor, le
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-    return model, episode_durations
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+
+    return model, episode_durations, q_vals, cum_reward
 
 
 def run_double_dqn(env, memory_size, num_hidden, batch_size, discount_factor, learn_rate, update_target_q):
@@ -122,9 +135,8 @@ def run_double_dqn(env, memory_size, num_hidden, batch_size, discount_factor, le
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate,
-                                     model_2, update_target_q)
-    return model, episode_durations
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
+    return model, episode_durations, q_vals, cum_reward
 
 
 if __name__ == "__main__":
@@ -140,34 +152,47 @@ if __name__ == "__main__":
     #exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
     #plot_exp_performance(exp_results, path="./img")
 
+    k = 5  # Number of models being trained
     env = envs["CartPole-v1"]
     hyperparams = HYPERPARAMETERS["CartPole-v1"]
-    q_data = []
-    q_models = []
-    dq_data = []
-    dq_models = []
+    q_models, dq_models = [], []
+    q_scores, q_durations, q_rewards = np.zeros((k, num_episodes)), np.zeros((k, num_episodes)), np.zeros((k, num_episodes))
+    dq_scores, dq_durations, dq_rewards = np.zeros((k, num_episodes)), np.zeros((k, num_episodes)), np.zeros((k, num_episodes))
 
-    for run in range(5):
-        print(f"Run #{run+1}...")
-        q_model, q_score = run_single_dqn(env, **hyperparams)
-        dq_model, dq_score = run_single_dqn(env, **hyperparams)
+    for run in range(k):
+        print(f"\rRun #{run+1}...", end="", flush=True)
+        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = run_single_dqn(env, **hyperparams)
+        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = run_single_dqn(env, **hyperparams)
 
         q_models.append(q_model)
-        q_data.append(q_score)
         dq_models.append(dq_model)
-        dq_data.append(dq_score)
 
-    q_data = np.stack(q_data)
-    dq_data = np.stack(dq_data)
-
+    # Get true average q function values
     true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
     true_dq = get_actual_returns(env, dq_models, hyperparams["discount_factor"])
-    print(true_q, true_dq)
+
+    # So significance-testing
+    print("Q-values")
+    _, significant_scores = test_difference(q_scores, dq_scores)
+    print("Rewards")
+    _, significant_rewards = test_difference(q_rewards, dq_rewards)
+    print("Durations")
+    _, significant_durations = test_difference(q_durations, dq_durations)
 
     plot_exps_with_intervals(
-        q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png",
-        smooth_curves=False, true_q=true_q, true_dq=true_dq  # Dummy values
+        q_scores, dq_scores, title="CartPole Q-Values", file_name="./img/qvalues.png",
+        smooth_curves=False, true_q=true_q, true_dq=true_dq, significant_values=significant_scores
     )
-    test_difference(q_data, dq_data)
+
+    plot_exps_with_intervals(
+        q_rewards, dq_rewards, title="CartPole Rewards", file_name="./img/rewards.png",
+        smooth_curves=False, significant_values=significant_rewards
+    )
+
+    plot_exps_with_intervals(
+        q_durations, dq_durations, title="CartPole Durations", file_name="./img/durations.png",
+        smooth_curves=False, significant_values=significant_durations
+    )
+
 
 
