@@ -15,12 +15,11 @@ import torch.nn.functional as F
 # PROJECT
 from models import ReplayMemory, QNetwork
 from plotting import create_plots_for_env
-from analyze import test_difference, get_actual_returns
 from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ['MountainCar-v0'] #, 'CartPole-v1']#, 'Acrobot-v1', ] #[MountainCarContinuous-v0]#''],
+ENVIRONMENTS = ['MountainCar-v0', 'CartPole-v1', 'Acrobot-v1'] #[MountainCarContinuous-v0]#''],
 
 
 def get_epsilon(it):
@@ -80,11 +79,15 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
 
 
 def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2=None, update_target_q=10):
-    optimizer = optim.Adam(model.parameters(), learn_rate)
+    optimizer1 = optim.Adam(model.parameters(), learn_rate)
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []
     q_vals = []
     episode_rewards = []
+
+    if model_2 is not None:
+        model_2.load_state_dict(model.state_dict())
+        optimizer2 = optim.Adam(model_2.parameters(), learn_rate)
 
     for i in range(num_episodes):
         steps = 0
@@ -94,17 +97,27 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
         done = False
         while not done:
             steps += 1
-
-            if model_2 is not None and steps % update_target_q == 0:
-                model_2.load_state_dict(model.state_dict())
+            flip = random.random()
 
             eps = get_epsilon(global_steps)
-            action = select_action(model, state, eps)
 
-            q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float), torch.tensor([action], dtype=torch.int64))
+            if flip > 0.5 or model_2 is None:
+                action = select_action(model, state, eps)
+
+                q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float), torch.tensor([action], dtype=torch.int64))
+                train(model, memory, optimizer1, batch_size, discount_factor, model_2)
+
+            else:
+                action = select_action(model_2, state, eps)
+
+                q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float),
+                                      torch.tensor([action], dtype=torch.int64))
+                train(model_2, memory, optimizer2, batch_size, discount_factor, model)
+
             episode_q_vals.append(q_val.detach().numpy().squeeze().tolist())
 
             next_state, reward, done, _ = env.step(action)
+            cum_reward += reward
 
             if "MountainCar" in type(env.unwrapped).__name__:
                 # If environment is MountainCar, adjust rewards
@@ -115,11 +128,9 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
                 if state[0] >= 0.5:
                     reward += 1
 
-            cum_reward += reward
-
             memory.push((state, action, reward, next_state, done))
             state = next_state
-            loss = train(model, memory, optimizer, batch_size, discount_factor, model_2)
+
         q_vals.append(np.mean(episode_q_vals))
         episode_durations.append(steps)
         global_steps += steps
