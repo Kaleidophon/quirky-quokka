@@ -72,7 +72,7 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 
-def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, num_hidden, double_dqn=False):
+def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, double_dqn=False):
     optimizer1 = optim.Adam(model.parameters(), learn_rate)
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []
