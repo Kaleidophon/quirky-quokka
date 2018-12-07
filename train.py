@@ -110,7 +110,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             else:
                 action = select_action(model_2, state, eps)
 
-                q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float),
+                q_val = compute_q_val(model_2, torch.tensor([state], dtype=torch.float),
                                       torch.tensor([action], dtype=torch.int64))
                 train(model_2, memory, optimizer2, batch_size, discount_factor, model)
 
@@ -139,7 +139,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
     return episode_durations, q_vals, episode_rewards
 
 
-def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate, **hyper):
+def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
@@ -149,7 +149,7 @@ def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
     return model, episode_durations, q_vals, cum_reward
 
 
-def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate, update_target_q):
+def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
