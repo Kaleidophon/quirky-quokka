@@ -74,7 +74,15 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, tit
             marker="|", color="black"
         )
 
-    plt.title(title)
+    # Emphasize significant values if given
+    if significant_values is not None:
+        plt.scatter(significant_values, np.zeros(significant_values.shape), marker="", color="black", alpha=0.7)
+        #for value in significant_values:
+        #    plt.axvline(value, color="gray", linestyle="dashed", linewidth=1)
+
+    if title is not None:
+        plt.title(title)
+
     plt.legend(fontsize=8)
 
     plt.savefig(file_name)
@@ -126,4 +134,3 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
         q_durations, dq_durations, title=f"{env_name} Durations", file_name=f"{path}/durations_{env_name.lower()}.png",
         smooth_curves=False, significant_values=significant_durations
     )
-

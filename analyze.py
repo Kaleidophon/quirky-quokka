@@ -6,6 +6,26 @@ Implement functions to analyze the data gathered.
 import numpy as np
 from scipy.stats import mannwhitneyu, shapiro
 import torch
+from gym.spaces import Discrete, Box
+# PROJECT
+from models import QNetwork
+
+# !!!!! important needs to be in line with split in train !!!!!
+split = 9
+
+def d2c(index, env):
+    dims = env.action_space.shape[0]
+    idx = index
+    low = env.action_space.low
+    high = env.action_space.high
+    interval = high - low
+    continuous_actions = []
+    for i in range(dims):
+        rem = idx % split
+        idx = int(idx / split)
+        continuous_actions.append(rem)
+    continuous_actions = (np.array(continuous_actions)/(split-1))* interval + low
+    return continuous_actions[0]
 
 
 def test_difference(q_data: np.array, dq_data: np.array, p_threshold=0.05):
@@ -72,6 +92,8 @@ def get_actual_returns(env, models: list, discount_factor):
             # Select action
             actions = model(torch.Tensor(state))
             action = torch.argmax(actions).item()
+            if isinstance(env.action_space,Box):
+                action = [d2c(action, env)]
             next_state, reward, done, _ = env.step(action)
             returns.append(reward)  # Remember encountered rewards
 
