@@ -14,13 +14,12 @@ import torch.nn.functional as F
 
 # PROJECT
 from models import ReplayMemory, QNetwork
-from plotting import plot_exp_performance, plot_exps_with_intervals
-from analyze import test_difference
+from plotting import create_plots_for_env
 from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ['CartPole-v1', 'Acrobot-v1']
+ENVIRONMENTS = ['MountainCar-v0', 'CartPole-v1', 'Acrobot-v1'] #[MountainCarContinuous-v0]#''],
 
 
 def get_epsilon(it):
@@ -80,79 +79,100 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
 
 
 def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2=None, update_target_q=10):
-    optimizer = optim.Adam(model.parameters(), learn_rate)
+    optimizer1 = optim.Adam(model.parameters(), learn_rate)
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []
+    q_vals = []
+    episode_rewards = []
+
+    if model_2 is not None:
+        model_2.load_state_dict(model.state_dict())
+        optimizer2 = optim.Adam(model_2.parameters(), learn_rate)
 
     for i in range(num_episodes):
         steps = 0
         state = env.reset()
+        episode_q_vals = []
+        cum_reward = 0
         done = False
         while not done:
             steps += 1
-
-            if model_2 is not None and steps % update_target_q == 0:
-                model_2.load_state_dict(model.state_dict())
+            flip = random.random()
 
             eps = get_epsilon(global_steps)
-            action = select_action(model, state, eps)
+
+            if flip > 0.5 or model_2 is None:
+                action = select_action(model, state, eps)
+
+                q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float), torch.tensor([action], dtype=torch.int64))
+                train(model, memory, optimizer1, batch_size, discount_factor, model_2)
+
+            else:
+                action = select_action(model_2, state, eps)
+
+                q_val = compute_q_val(model_2, torch.tensor([state], dtype=torch.float),
+                                      torch.tensor([action], dtype=torch.int64))
+                train(model_2, memory, optimizer2, batch_size, discount_factor, model)
+
+            episode_q_vals.append(q_val.detach().numpy().squeeze().tolist())
+
             next_state, reward, done, _ = env.step(action)
+            cum_reward += reward
+
+            if "MountainCar" in type(env.unwrapped).__name__:
+                # If environment is MountainCar, adjust rewards
+                # Adjust reward based on car position
+                reward = state[0] + 0.5
+
+                # Adjust reward for task completion
+                if state[0] >= 0.5:
+                    reward += 1
+
             memory.push((state, action, reward, next_state, done))
             state = next_state
-            loss = train(model, memory, optimizer, batch_size, discount_factor, model_2)
 
+        q_vals.append(np.mean(episode_q_vals))
         episode_durations.append(steps)
         global_steps += steps
-    return episode_durations
+        episode_rewards.append(cum_reward)
+
+    return episode_durations, q_vals, episode_rewards
 
 
-def run_single_dqn(env, memory_size, num_hidden, batch_size, discount_factor, learn_rate, **hyper):
+def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-    return episode_durations
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+
+    return model, episode_durations, q_vals, cum_reward
 
 
-def run_double_dqn(env, memory_size, num_hidden, batch_size, discount_factor, learn_rate, update_target_q):
+def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate):
     memory = ReplayMemory(memory_size)
     n_out = env.action_space.n
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate,
-                                     model_2, update_target_q)
-    return episode_durations
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
+    return model, episode_durations, q_vals, cum_reward
 
 
 if __name__ == "__main__":
-    # Let's run it!
-    num_episodes = 100
-
     # init envs
     envs = {name: gym.envs.make(name) for name in ENVIRONMENTS}
     # collect experiments
     exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
     # train
-    #exp_results = [([(exp(env), exp_name) for exp_name, exp in exps], env_name) for env_name, env in envs.items()]
-    #plot_exp_performance(exp_results, path="./img")
+    for env_name, env in envs.items():
+        create_plots_for_env(
+            env_name, env, HYPERPARAMETERS[env_name], path="./img/",
+            dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn
+        )
 
-    q_data = []
-    dq_data = []
 
-    for run in range(3):
-        print(f"Run #{run+1}...")
-        q_data.append(run_single_dqn(envs["CartPole-v1"], **HYPERPARAMETERS["CartPole-v1"]))
-        dq_data.append(run_single_dqn(envs["CartPole-v1"], **HYPERPARAMETERS["CartPole-v1"]))
 
-    q_data = np.stack(q_data)
-    dq_data = np.stack(dq_data)
-    plot_exps_with_intervals(
-        q_data, dq_data, title="CartPole Episode Durations", file_name="./img/test.png",
-        smooth_curves=False, true_q=150, true_dq=136.4  # Dummy values
-    )
-    test_difference(q_data, dq_data)
 
