@@ -2,13 +2,21 @@
 Define plotting functions here.
 """
 
+# STD
+import os
+
 # EXT
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import torch
 
 # PROJECT
 from analyze import get_actual_returns, test_difference
+
+if os.environ.get('DISPLAY', '') == '':
+    print('no display found. Using non-interactive Agg backend')
+    matplotlib.use('Agg')
 
 
 def smooth(x, N):
@@ -102,8 +110,8 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
 
     for run in range(k):
         print(f"\rRun #{run+1}...", end="", flush=True)
-        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, copy_mode, **hyperparams)
-        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, copy_mode, **hyperparams)
+        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, **hyperparams)
+        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, **hyperparams)
 
         q_models.append(q_model)
         dq_models.append(dq_model)
