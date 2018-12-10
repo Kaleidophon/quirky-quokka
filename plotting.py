@@ -5,6 +5,7 @@ Define plotting functions here.
 # EXT
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 # PROJECT
 from analyze import get_actual_returns, test_difference
@@ -90,7 +91,7 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, tit
 
 
 def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experiment, image_path, model_path=None,
-                         num_episodes=20, k=10, copy_mode=True):
+                         num_episodes=100, k=10, copy_mode=False):
 
     print(f"Running {k} experiments for {env_name}...")
     q_models, dq_models = [], []
@@ -108,7 +109,9 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
         dq_models.append(dq_model)
 
     # Save models
-
+    for model_type, models in zip(["dqn", "ddqn"], [q_models, dq_models]):
+        for i, model in enumerate(models):
+            torch.save(model, f"{model_path}{env_name}_{model_type}{i}.pt")
 
     # Get true average q function values
     true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])

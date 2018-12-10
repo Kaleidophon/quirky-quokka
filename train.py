@@ -221,6 +221,6 @@ if __name__ == "__main__":
 
     for env_name, env in envs.items():
         create_plots_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=2, copy_mode=True,
+            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=5,copy_mode=False, model_path="./models/",
             dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn
         )
