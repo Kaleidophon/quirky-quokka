@@ -12,6 +12,7 @@ import torch.optim as optim
 import gym
 import torch.nn.functional as F
 from gym.spaces import Box
+import copy
 
 # PROJECT
 from models import ReplayMemory, QNetwork
@@ -99,7 +100,7 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
 
-def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2=None, update_target_q=10, max_steps=1000):
+def run_episodes(train, model, memory, env, num_episodes, copy_mode, batch_size, discount_factor, learn_rate, model_2=None, update_target_q=10, max_steps=1000):
     optimizer1 = optim.Adam(model.parameters(), learn_rate)
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []
@@ -122,8 +123,11 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             eps = get_epsilon(global_steps)
 
-            if flip > 0.5 or model_2 is None:
+            if copy_mode or (flip > 0.5 or model_2 is None):
                 action = select_action(model, state, eps)
+
+                if model_2 is None and steps % 10 == 0:
+                   model_2 = copy.deepcopy(model)
 
                 q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float), torch.tensor([action], dtype=torch.int64))
                 train(model, memory, optimizer1, batch_size, discount_factor, model_2)
@@ -170,7 +174,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
     return episode_durations, q_vals, episode_rewards
 
 
-def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate):
+def run_single_dqn(env, num_episodes, copy_mode,memory_size, num_hidden, batch_size, discount_factor, learn_rate):
     memory = ReplayMemory(memory_size)
 
     # continuous action space
@@ -183,12 +187,12 @@ def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
 
     n_in = len(env.observation_space.low)
     model = QNetwork(n_in, n_out, num_hidden)
-    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, copy_mode, batch_size, discount_factor, learn_rate)
 
     return model, episode_durations, q_vals, cum_reward
 
 
-def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_factor, learn_rate):
+def run_double_dqn(env, num_episodes, copy_mode, memory_size, num_hidden, batch_size, discount_factor, learn_rate):
     memory = ReplayMemory(memory_size)
 
     # continuous action space
@@ -203,7 +207,7 @@ def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
+    episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, copy_mode, batch_size, discount_factor, learn_rate, model_2)
     return model, episode_durations, q_vals, cum_reward
 
 
@@ -217,6 +221,6 @@ if __name__ == "__main__":
 
     for env_name, env in envs.items():
         create_plots_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=25,
+            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=2, copy_mode=True,
             dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn
         )

@@ -90,7 +90,7 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, tit
 
 
 def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experiment, image_path, model_path=None,
-                         num_episodes=100, k=10):
+                         num_episodes=20, k=10, copy_mode=True):
 
     print(f"Running {k} experiments for {env_name}...")
     q_models, dq_models = [], []
@@ -101,14 +101,14 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
 
     for run in range(k):
         print(f"\rRun #{run+1}...", end="", flush=True)
-        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, **hyperparams)
-        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, **hyperparams)
+        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, copy_mode, **hyperparams)
+        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, copy_mode, **hyperparams)
 
         q_models.append(q_model)
         dq_models.append(dq_model)
 
     # Save models
-    
+
 
     # Get true average q function values
     true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
