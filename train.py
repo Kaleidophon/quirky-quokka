@@ -17,25 +17,30 @@ from gym.spaces import Box
 from models import ReplayMemory, QNetwork
 from plotting import create_plots_for_env
 from hyperparameters import HYPERPARAMETERS
-from gym.spaces import Discrete, Box
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ['MountainCarContinuous-v0'] #[MountainCarContinuous-v0]#''],
+ENVIRONMENTS = ["Pendulum-v0", "Acrobot-v1", "MountainCar-v0", "CartPole-v1"]
+SPLITS = 9  # TODO: Pass this as argument
 
-def d2c(index, env):
+
+def discrete_to_continuous(index, env):
     dims = env.action_space.shape[0]
     idx = index
     low = env.action_space.low
     high = env.action_space.high
     interval = high - low
     continuous_actions = []
+
     for i in range(dims):
-        rem = idx % split
-        idx = int(idx / split)
+        rem = idx % SPLITS
+        idx = int(idx / SPLITS)
         continuous_actions.append(rem)
-    continuous_actions = (np.array(continuous_actions)/(split-1))* interval + low
+
+    continuous_actions = (np.array(continuous_actions) / (SPLITS - 1)) * interval + low
+
     return continuous_actions[0]
+
 
 def get_epsilon(it):
     return 0.05 if it >= 1000 else - 0.00095 * it + 1
@@ -75,6 +80,7 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     reward = torch.tensor(reward, dtype=torch.float)
     done = torch.tensor(done, dtype=torch.uint8)  # Boolean
     action = action.squeeze()
+
     # compute the q value
     q_val = compute_q_val(model, state, action)
 
@@ -133,10 +139,13 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             # only convert to continuous action when actually performing an action in the envs
             action_env = action
+
             if isinstance(env.action_space, Box):
-                action_env = [d2c(action, env)]
+                action_env = [discrete_to_continuous(action, env)]
 
             next_state, reward, done, _ = env.step(action_env)
+
+            cum_reward += reward
 
             if "MountainCar" in type(env.unwrapped).__name__:
                 # If environment is MountainCar, adjust rewards
@@ -152,6 +161,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             if steps >= max_steps:
                 done = True
+
         q_vals.append(np.mean(episode_q_vals))
         episode_durations.append(steps)
         global_steps += steps
@@ -166,7 +176,7 @@ def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
     # continuous action space
     if isinstance(env.action_space, Box):
         dims = env.action_space.shape[0]
-        n_out =  split**dims
+        n_out = SPLITS ** dims
     # discrete action space
     else:
         n_out = env.action_space.n
@@ -184,7 +194,7 @@ def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
     # continuous action space
     if isinstance(env.action_space, Box):
         dims = env.action_space.shape[0]
-        n_out = split**dims
+        n_out = SPLITS ** dims
     # discrete action space
     else:
         n_out = env.action_space.n
@@ -193,22 +203,20 @@ def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
     model = QNetwork(n_in, n_out, num_hidden)
     model_2 = QNetwork(n_in, n_out, num_hidden)
 
-
     episode_durations, q_vals, cum_reward = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, model_2)
     return model, episode_durations, q_vals, cum_reward
 
 
 if __name__ == "__main__":
 
-    split = 9
-    # init envs
+    # Init envs
     envs = {name: gym.envs.make(name) for name in ENVIRONMENTS}
-    # collect experiments
-    exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
+    # Collect experiments
+    exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
     for env_name, env in envs.items():
         create_plots_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], path="./img/",
-            dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn,num_episodes=40, k=2
+            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=25,
+            dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn
         )

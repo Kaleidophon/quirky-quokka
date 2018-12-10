@@ -67,18 +67,17 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, tit
 
     # Emphasize significant values if given
     if significant_values is not None:
-        y_ticks, _ = plt.yticks()
-        lowest_y_tick = np.min(y_ticks)
+        num_points = q_data.shape[0] * q_data.shape[1]
+        lowest_data_point = np.min([np.min(q_data.reshape(num_points)), np.min(dq_data.reshape(num_points))])
+        lowest_data_point = int(lowest_data_point) - 5 if lowest_data_point != 0 else -10
         plt.scatter(
-            significant_values, np.ones(significant_values.shape) * lowest_y_tick - np.abs(lowest_y_tick) / 100,
+            significant_values, np.ones(significant_values.shape) * lowest_data_point,
             marker="|", color="black"
         )
 
     # Emphasize significant values if given
     if significant_values is not None:
         plt.scatter(significant_values, np.zeros(significant_values.shape), marker="", color="black", alpha=0.7)
-        #for value in significant_values:
-        #    plt.axvline(value, color="gray", linestyle="dashed", linewidth=1)
 
     if title is not None:
         plt.title(title)
@@ -90,7 +89,9 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, tit
     plt.close()
 
 
-def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experiment, path, num_episodes=100, k=10):
+def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experiment, image_path, model_path=None,
+                         num_episodes=100, k=10):
+
     print(f"Running {k} experiments for {env_name}...")
     q_models, dq_models = [], []
     q_scores, q_durations, q_rewards = np.zeros((k, num_episodes)), np.zeros((k, num_episodes)), np.zeros(
@@ -105,6 +106,9 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
 
         q_models.append(q_model)
         dq_models.append(dq_model)
+
+    # Save models
+    
 
     # Get true average q function values
     true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
@@ -121,16 +125,16 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
     print("")
 
     plot_exps_with_intervals(
-        q_scores, dq_scores, title=f"{env_name} Q-Values", file_name=f"{path}/qvalues_{env_name.lower()}.png",
+        q_scores, dq_scores, title=f"{env_name} Q-Values", file_name=f"{image_path}/qvalues_{env_name.lower()}.png",
         smooth_curves=False, true_q=true_q, true_dq=true_dq, significant_values=significant_scores
     )
 
     plot_exps_with_intervals(
-        q_rewards, dq_rewards, title=f"{env_name} Rewards", file_name=f"{path}/rewards_{env_name.lower()}.png",
+        q_rewards, dq_rewards, title=f"{env_name} Rewards", file_name=f"{image_path}/rewards_{env_name.lower()}.png",
         smooth_curves=False, significant_values=significant_rewards
     )
 
     plot_exps_with_intervals(
-        q_durations, dq_durations, title=f"{env_name} Durations", file_name=f"{path}/durations_{env_name.lower()}.png",
+        q_durations, dq_durations, title=f"{env_name} Durations", file_name=f"{image_path}/durations_{env_name.lower()}.png",
         smooth_curves=False, significant_values=significant_durations
     )
