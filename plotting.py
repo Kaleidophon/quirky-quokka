@@ -111,7 +111,11 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
     # Save models
     for model_type, models in zip(["dqn", "ddqn"], [q_models, dq_models]):
         for i, model in enumerate(models):
-            torch.save(model, f"{model_path}{env_name}_{model_type}{i}.pt")
+            if model_type == "ddqn":
+                copy = "_copy" if copy_mode else ""
+                torch.save(model, f"{model_path}{env_name}_{model_type}{copy}{i}.pt")
+            else:
+                torch.save(model, f"{model_path}{env_name}_{model_type}{i}.pt")
 
     # Get true average q function values
     true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
