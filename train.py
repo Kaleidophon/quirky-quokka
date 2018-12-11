@@ -20,8 +20,8 @@ from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ["CartPole-v1"]# "MountainCar-v0", "CartPole-v1", "Pendulum-v0", "Acrobot-v1"]
-SPLITS = 5  # TODO: Pass this as argument
+ENVIRONMENTS = ["MountainCar-v0", "CartPole-v1", "Pendulum-v0", "Acrobot-v1"]
+SPLITS = 16  # TODO: Pass this as argument
 
 
 def discrete_to_continuous(index, env):
@@ -53,8 +53,9 @@ def select_action(model, state, epsilon):
 
 
 def compute_q_val(model, state, action):
-    action_index = torch.stack(action.chunk(state.size(0)))
-    return model(state).gather(1, action_index)
+    q_val = model(state)
+    q_val = q_val.gather(1, action.unsqueeze(1).view(-1, 1))
+    return q_val
 
 
 def compute_target(model, reward, next_state, done, discount_factor, target_net, double_dqn=False):
@@ -63,7 +64,7 @@ def compute_target(model, reward, next_state, done, discount_factor, target_net,
         targets = reward + (target_net(next_state).max(1)[0] * discount_factor) * (1-done.float())
     else:
         greedy_actions = model(next_state).argmax(1)
-        target_q = target_net(next_state).gather(1, greedy_actions.view(-1, 1)).unsqueeze(1)
+        target_q = target_net(next_state).gather(1, greedy_actions.view(-1, 1)).squeeze(1)
         targets = reward + target_q * discount_factor * (1-done.float())
 
     return targets.unsqueeze(1)
@@ -146,15 +147,6 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             cum_reward += reward
 
-            if "MountainCar" in type(env.unwrapped).__name__:
-                # If environment is MountainCar, adjust rewards
-                # Adjust reward based on car position
-                reward = state[0] + 0.5
-
-                # Adjust reward for task completion
-                if state[0] >= 0.5:
-                    reward += 1
-
             memory.push((state, action, reward, next_state, done))
             state = next_state
 
@@ -198,9 +190,17 @@ if __name__ == "__main__":
     # Init envs
     envs = {name: gym.envs.make(name) for name in ENVIRONMENTS}
 
+    # Although hyperparameter search wasn't done with seeding (to avoid overfitting to a specific seed), it makes
+    # sense to seed here to guarantee reproducability of the models and plots
+    seed = 42  # This is not randomly chosen
+    random.seed(seed)
+    torch.manual_seed(seed)
+    for env in envs.values():
+        env.seed(seed)
+
     for env_name, env in envs.items():
         create_plots_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=2,  model_path="./models/",
-            dqn_experiment=run_dqn, ddqn_experiment=run_dqn, num_episodes=100,
+            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=15,  model_path="./models/",
+            dqn_experiment=run_dqn, ddqn_experiment=run_dqn, num_episodes=500,
         )
 
