@@ -110,8 +110,8 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
 
     for run in range(k):
         print(f"\rRun #{run+1}...", end="", flush=True)
-        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, **hyperparams)
-        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, **hyperparams)
+        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, double_dqn=False, **hyperparams)
+        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, double_dqn=True, **hyperparams)
 
         q_models.append(q_model)
         dq_models.append(dq_model)
@@ -119,11 +119,7 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
     # Save models
     for model_type, models in zip(["dqn", "ddqn"], [q_models, dq_models]):
         for i, model in enumerate(models):
-            if model_type == "ddqn":
-                copy = "_copy" if copy_mode else ""
-                torch.save(model, f"{model_path}{env_name}_{model_type}{copy}{i}.pt")
-            else:
-                torch.save(model, f"{model_path}{env_name}_{model_type}{i}.pt")
+            torch.save(model, f"{model_path}{env_name}_{model_type}{i}.pt")
 
     # Get true average q function values
     true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])

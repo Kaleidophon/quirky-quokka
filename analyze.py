@@ -7,8 +7,6 @@ import numpy as np
 from scipy.stats import mannwhitneyu, shapiro
 import torch
 from gym.spaces import Discrete, Box
-# PROJECT
-from models import QNetwork
 
 # !!!!! important needs to be in line with split in train !!!!!
 split = 9
@@ -96,15 +94,6 @@ def get_actual_returns(env, models: list, discount_factor):
             if isinstance(env.action_space,Box):
                 action = [d2c(action, env)]
             next_state, reward, done, _ = env.step(action)
-
-            if "MountainCar" in type(env.unwrapped).__name__:
-                # If environment is MountainCar, adjust rewards
-                # Adjust reward based on car position
-                reward = state[0] + 0.5
-
-                # Adjust reward for task completion
-                if state[0] >= 0.5:
-                    reward += 1
 
             returns.append(reward)  # Remember encountered rewards
 
