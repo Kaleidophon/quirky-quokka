@@ -21,7 +21,7 @@ from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ["MountainCar-v0", "CartPole-v1", "Pendulum-v0", "Acrobot-v1"]
+ENVIRONMENTS = ["Acrobot-v1"] #, "CartPole-v1", "Pendulum-v0", "Acrobot-v1"]
 SPLITS = 5  # TODO: Pass this as argument
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -56,9 +56,8 @@ def select_action(model, state, epsilon):
 
 
 def compute_q_val(model, state, action):
-    Q_val = model(state)
+    Q_val = model(state).to(device)
     Q_val = Q_val.gather(1, action.unsqueeze(1).view(-1, 1))
-    #action_index = torch.stack(action.chunk(state.size(0)))
     return Q_val
 
 
@@ -132,7 +131,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float).to(device), torch.tensor([action], dtype=torch.int64).to(device))
             train(model, memory, optimizer1, batch_size, discount_factor, model_2)
 
-            episode_q_vals.append(q_val.cpu().detach().numpy().squeeze().tolist())
+            episode_q_vals.append(q_val.detach().squeeze().tolist())
 
             # only convert to continuous action when actually performing an action in the envs
             action_env = action
@@ -159,7 +158,8 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             if steps >= max_steps:
                 done = True
 
-        q_vals.append(np.mean(episode_q_vals))
+        episode_q_vals = torch.FloatTensor(episode_q_vals)
+        q_vals.append(torch.mean(episode_q_vals))
         episode_durations.append(steps)
         global_steps += steps
         episode_rewards.append(cum_reward)
@@ -220,8 +220,7 @@ if __name__ == "__main__":
     exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
     for env_name, env in envs.items():
-        cProfile.run(
-            """create_plots_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=1, copy_mode=True, model_path="./models/",
-            dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn, num_episodes=100)
-            """, sort=True)
+           create_plots_for_env(
+            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=3, copy_mode=True, model_path="./models/",
+            dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn, num_episodes=500)
+
