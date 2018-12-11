@@ -12,6 +12,7 @@ from models import QNetwork
 
 # !!!!! important needs to be in line with split in train !!!!!
 split = 9
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def d2c(index, env):
@@ -91,7 +92,7 @@ def get_actual_returns(env, models: list, discount_factor):
 
         while not done:
             # Select action
-            actions = model(torch.Tensor(state))
+            actions = model(torch.Tensor(state).to(device)).to(device)
             action = torch.argmax(actions).item()
             if isinstance(env.action_space,Box):
                 action = [d2c(action, env)]

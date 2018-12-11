@@ -14,6 +14,8 @@ import torch
 # PROJECT
 from analyze import get_actual_returns, test_difference
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 if os.environ.get('DISPLAY', '') == '':
     print('no display found. Using non-interactive Agg backend')
     matplotlib.use('Agg')

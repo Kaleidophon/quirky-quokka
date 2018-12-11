@@ -12,6 +12,7 @@ import torch.optim as optim
 import gym
 import torch.nn.functional as F
 from gym.spaces import Box
+import cProfile
 
 # PROJECT
 from models import ReplayMemory, QNetwork
@@ -23,6 +24,8 @@ EPS = float(np.finfo(np.float32).eps)
 ENVIRONMENTS = ["MountainCar-v0", "CartPole-v1", "Pendulum-v0", "Acrobot-v1"]
 SPLITS = 5  # TODO: Pass this as argument
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 
 def discrete_to_continuous(index, env):
     dims = env.action_space.shape[0]
@@ -48,13 +51,15 @@ def get_epsilon(it):
 
 def select_action(model, state, epsilon):
     with torch.no_grad():
-        action = model(torch.Tensor(state))
+        action = model(torch.Tensor(state).to(device))
         return torch.argmax(action).item() if random.random() > epsilon else random.choice([0,1])
 
 
 def compute_q_val(model, state, action):
-    action_index = torch.stack(action.chunk(state.size(0)))
-    return model(state).gather(1, action_index)
+    Q_val = model(state)
+    Q_val = Q_val.gather(1, action.unsqueeze(1).view(-1, 1))
+    #action_index = torch.stack(action.chunk(state.size(0)))
+    return Q_val
 
 
 def compute_target(model, reward, next_state, done, discount_factor):
@@ -74,11 +79,11 @@ def train(model, memory, optimizer, batch_size, discount_factor, model_2):
     state, action, reward, next_state, done = zip(*transitions)
 
     # convert to PyTorch and define types
-    state = torch.tensor(state, dtype=torch.float)
-    action = torch.tensor(action, dtype=torch.int64)  # Need 64 bit to use them as index
-    next_state = torch.tensor(next_state, dtype=torch.float)
-    reward = torch.tensor(reward, dtype=torch.float)
-    done = torch.tensor(done, dtype=torch.uint8)  # Boolean
+    state = torch.tensor(state, dtype=torch.float).to(device)
+    action = torch.tensor(action, dtype=torch.int64).to(device) # Need 64 bit to use them as index
+    next_state = torch.tensor(next_state, dtype=torch.float).to(device)
+    reward = torch.tensor(reward, dtype=torch.float).to(device)
+    done = torch.tensor(done, dtype=torch.uint8).to(device) # Boolean
     action = action.squeeze()
 
     # compute the q value
@@ -124,10 +129,10 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             if steps % update_target_q == 0 and model_2 is not None:
                 model_2.load_state_dict(model.state_dict())
 
-            q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float), torch.tensor([action], dtype=torch.int64))
+            q_val = compute_q_val(model, torch.tensor([state], dtype=torch.float).to(device), torch.tensor([action], dtype=torch.int64).to(device))
             train(model, memory, optimizer1, batch_size, discount_factor, model_2)
 
-            episode_q_vals.append(q_val.detach().numpy().squeeze().tolist())
+            episode_q_vals.append(q_val.cpu().detach().numpy().squeeze().tolist())
 
             # only convert to continuous action when actually performing an action in the envs
             action_env = action
@@ -174,7 +179,7 @@ def run_single_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
         n_out = env.action_space.n
 
     n_in = len(env.observation_space.low)
-    model = QNetwork(n_in, n_out, num_hidden)
+    model = QNetwork(n_in, n_out, num_hidden).to(device)
     episode_durations, q_vals, cum_reward = run_episodes(
         train=train, model=model, memory=memory, env=env, num_episodes=num_episodes, batch_size=batch_size,
         discount_factor=discount_factor, learn_rate=learn_rate, max_steps=max_steps
@@ -195,8 +200,8 @@ def run_double_dqn(env, num_episodes, memory_size, num_hidden, batch_size, disco
         n_out = env.action_space.n
 
     n_in = len(env.observation_space.low)
-    model = QNetwork(n_in, n_out, num_hidden)
-    model_2 = QNetwork(n_in, n_out, num_hidden)
+    model = QNetwork(n_in, n_out, num_hidden).to(device)
+    model_2 = QNetwork(n_in, n_out, num_hidden).to(device)
 
     episode_durations, q_vals, cum_reward = run_episodes(
         train=train, model=model, memory=memory, env=env, num_episodes=num_episodes, batch_size=batch_size,
@@ -215,8 +220,8 @@ if __name__ == "__main__":
     exps = [('Single DQN', run_single_dqn), ('Double DQN', run_double_dqn)]
 
     for env_name, env in envs.items():
-        create_plots_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=20,  model_path="./models/",
-            dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn, num_episodes=1000,
-        )
-
+        cProfile.run(
+            """create_plots_for_env(
+            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=1, copy_mode=True, model_path="./models/",
+            dqn_experiment=run_single_dqn, ddqn_experiment=run_double_dqn, num_episodes=100)
+            """, sort=True)
