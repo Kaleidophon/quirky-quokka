@@ -2,7 +2,8 @@
 
 Parameters we used for training in the gym environments `CartPole-v1`, `MountainCar-v0`, `Acrobot-v1`, `Pendulum-v0`:
 
-```CartPole-v1: 
+```
+CartPole-v1: 
 batch_size: 128,
 discount_factor: 0.8,
 learn_rate: 1e-3,
@@ -13,7 +14,8 @@ max_steps: 200
 ```
 
 
-```MountainCar-v0: 
+```
+MountainCar-v0: 
 batch_size: 128,
 discount_factor: 0.99,
 learn_rate: 0.001,
@@ -24,7 +26,8 @@ max_steps: 1000
 ```
 
 
-```Acrobot-v1: 
+```
+Acrobot-v1: 
 batch_size: 128,
 discount_factor: 0.99,
 learn_rate: 0.001,
