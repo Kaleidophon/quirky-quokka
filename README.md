@@ -42,6 +42,37 @@ DDQN performs better on this task while also having Q-estimates that are closer 
 , we suspect that using Deep Neural Networks to parameterize the Q-function
 leads to unstable and unrealistic Q-values (non-negative)
 
+## Conclusion 
+
+* Only Acrobot-v1 shows significant performance
+improvement when using DDQN
+* Whether DDQN improves performance depends on
+the reward structure of the environment, in our
+environments the reward distributions are very
+narrow, so there is not much room for maxmization
+bias to occur
+* Due to parameterization with Deep Neural
+Networks, Q-values can be unstable while still
+achieving the objective
+
+## Usage
+
+To run the experiments yourself, first install all the necessary requirements
+
+    cd quirky-quokka
+    pip3 install -r requirements.txt
+    
+Then run the training script:
+
+    python3 train.py
+    
+Models will be saved to the `models/` folder, plots and the data they are based on into `img/` and `data/` respectively.
+Lastly, trained models can also be tested by rendering their environments using
+
+    python3 test.py ./models/<model_name>.pt
+    
+where the environment name has to be included in `<model_name>`.
+
 ## References
 
 Hado van Hasselt, Arthur Guez, and David Silver.
