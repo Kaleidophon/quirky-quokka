@@ -1,5 +1,8 @@
 # Environment-related difference of Deep Q-Learning and Deep Double Q-Learning
 
+This project was conducted for the Reinforcement Learning course of the Master Artificial Intelligence at the University 
+of Amsterdam during the Winter term 2018/2019,
+
 ## Introduction
 
 The Q-learning algorithm is known to overestimate state-action values under certain conditions. 
@@ -27,9 +30,9 @@ total rewards following the policy found after training terminated. These true r
 the dashed lines. Markers (bottom of x-axis) indicate time steps with statistically significant differences between DQN 
 and DDQN (p = 0.05).
 
-<img src="img/qvalues_cartpole_final.png" width="400"> <img src="img/modified.png" width="400"><br>
+<img src="img/qvalues_cartpole_final.png" width="425"> <img src="img/modified.png" width="425"><br>
 
-<img src="img/qvalues_pendulum-v0_final.png" width="400"> <img src="img/qvalues_acrobot-v1_final.png" width="400">
+<img src="img/qvalues_pendulum-v0_final.png" width="425"> <img src="img/qvalues_acrobot-v1_final.png" width="425">
 
 We observe the following things:
 * Both algorithms perform well on **CartPole-v1**; environment less challenging due to easy credit assignment (immediate, 
