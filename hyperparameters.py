@@ -18,7 +18,7 @@ HYPERPARAMETERS = {
         "learn_rate": 0.001,
         "num_hidden": 128,
         "memory_size": 10000,
-        "update_target_q": 100,
+        "update_target_q": 10,
         "max_steps": 1000
      },
     "Acrobot-v1": {

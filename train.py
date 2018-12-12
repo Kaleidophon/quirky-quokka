@@ -221,10 +221,10 @@ if __name__ == "__main__":
 
     for env_name, env in envs.items():
         q_data, dq_data = create_data_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], k=2,  model_path="./models/", data_path="./data/",
-            dqn_experiment=run_dqn, ddqn_experiment=run_dqn, num_episodes=100,
+            env_name, env, HYPERPARAMETERS[env_name], k=15,  model_path="./models/", data_path="./data/",
+            dqn_experiment=run_dqn, ddqn_experiment=run_dqn, num_episodes=1000,
         )
-        plot_data_for_env(env, q_data, dq_data, "./img/")
+        plot_data_for_env(env_name, q_data, dq_data, "./img/")
 
     # Example on how to load data
-    # q_data, dq_data = load_data("./data/CartPole-v1_q_data.npy"), load_data("./data/CartPole-v1_dq_data.npy")
+    #q_data, dq_data = load_data("./data/MountainCar-v0_q_data_10k.npy"), load_data("./data/MountainCar-v0_dq_data_10k.npy")
