@@ -14,32 +14,14 @@ import torch.nn.functional as F
 from gym.spaces import Box
 
 # PROJECT
+from analyze import get_actual_returns, discrete_to_continuous, SPLITS, load_data
 from models import ReplayMemory, QNetwork
-from plotting import create_plots_for_env
 from hyperparameters import HYPERPARAMETERS
+from plotting import plot_data_for_env
 
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
 ENVIRONMENTS = ["MountainCar-v0", "CartPole-v1", "Pendulum-v0", "Acrobot-v1"]
-SPLITS = 16  # TODO: Pass this as argument
-
-
-def discrete_to_continuous(index, env):
-    dims = env.action_space.shape[0]
-    idx = index
-    low = env.action_space.low
-    high = env.action_space.high
-    interval = high - low
-    continuous_actions = []
-
-    for i in range(dims):
-        rem = idx % SPLITS
-        idx = int(idx / SPLITS)
-        continuous_actions.append(rem)
-
-    continuous_actions = (np.array(continuous_actions) / (SPLITS - 1)) * interval + low
-
-    return continuous_actions[0]
 
 
 def get_epsilon(it):
@@ -185,6 +167,45 @@ def run_dqn(env, num_episodes, memory_size, num_hidden, batch_size, discount_fac
     return model, episode_durations, q_vals, cum_reward
 
 
+def create_data_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experiment, num_episodes=100, k=10,
+                        model_path=None, data_path=None):
+
+    print(f"Running {k} experiments for {env_name}...")
+    q_models, dq_models = [], []
+    q_values, q_durations, q_rewards = np.zeros((k, num_episodes)), np.zeros((k, num_episodes)), np.zeros(
+        (k, num_episodes))
+    dq_values, dq_durations, dq_rewards = np.zeros((k, num_episodes)), np.zeros((k, num_episodes)), np.zeros(
+        (k, num_episodes))
+
+    for run in range(k):
+        print(f"\rRun #{run+1}...", end="", flush=True)
+        q_model, q_durations[run, :], q_values[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, double_dqn=False, **hyperparams)
+        dq_model, dq_durations[run, :], dq_values[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, double_dqn=True, **hyperparams)
+
+        q_models.append(q_model)
+        dq_models.append(dq_model)
+
+    # Save models
+    for model_type, models in zip(["dqn", "ddqn"], [q_models, dq_models]):
+        for i, model in enumerate(models):
+            torch.save(model, f"{model_path}{env_name}_{model_type}{i}.pt")
+
+    # Get true average q function values
+    true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
+    true_dq = get_actual_returns(env, dq_models, hyperparams["discount_factor"])
+
+    # Accumulate the data into single objects
+    q_data, dq_data = {}, {}
+    q_data["values"], q_data["rewards"], q_data["durations"], q_data["true"] = q_values, q_rewards, q_durations, true_q
+    dq_data["values"], dq_data["rewards"], dq_data["durations"], dq_data["true"] = dq_values, dq_rewards, dq_durations, true_dq
+
+    # Save data if path is given
+    np.save(f"{data_path}{env_name}_q_data", q_data)
+    np.save(f"{data_path}{env_name}_dq_data", dq_data)
+
+    return q_data, dq_data
+
+
 if __name__ == "__main__":
 
     # Init envs
@@ -199,8 +220,11 @@ if __name__ == "__main__":
         env.seed(seed)
 
     for env_name, env in envs.items():
-        create_plots_for_env(
-            env_name, env, HYPERPARAMETERS[env_name], image_path="./img/", k=15,  model_path="./models/",
-            dqn_experiment=run_dqn, ddqn_experiment=run_dqn, num_episodes=500,
+        q_data, dq_data = create_data_for_env(
+            env_name, env, HYPERPARAMETERS[env_name], k=2,  model_path="./models/", data_path="./data/",
+            dqn_experiment=run_dqn, ddqn_experiment=run_dqn, num_episodes=100,
         )
+        plot_data_for_env(env, q_data, dq_data, "./img/")
 
+    # Example on how to load data
+    # q_data, dq_data = load_data("./data/CartPole-v1_q_data.npy"), load_data("./data/CartPole-v1_dq_data.npy")

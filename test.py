@@ -17,7 +17,7 @@ import sys
 
 # PROJECT
 from models import ReplayMemory, QNetwork
-from plotting import create_plots_for_env
+from train import create_data_for_env
 from hyperparameters import HYPERPARAMETERS
 
 # CONSTANTS
@@ -66,6 +66,7 @@ def test_reinforce_model(model, env, num_episodes):
             state = next_state
             time.sleep(0.05)
         env.close()
+
 
 if __name__ == "__main__":
     filename = sys.argv[1]

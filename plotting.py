@@ -9,10 +9,9 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-import torch
 
 # PROJECT
-from analyze import get_actual_returns, test_difference
+from analyze import test_difference
 
 if os.environ.get('DISPLAY', '') == '':
     print('no display found. Using non-interactive Agg backend')
@@ -92,43 +91,19 @@ def plot_exps_with_intervals(q_data: np.array, dq_data: np.array, file_name, tit
         plt.title(title)
 
     plt.legend(fontsize=8)
-
+    plt.tight_layout()
     plt.savefig(file_name)
-
     plt.close()
 
 
-def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experiment, image_path, model_path=None,
-                         num_episodes=100, k=10, copy_mode=False):
-
-    print(f"Running {k} experiments for {env_name}...")
-    q_models, dq_models = [], []
-    q_scores, q_durations, q_rewards = np.zeros((k, num_episodes)), np.zeros((k, num_episodes)), np.zeros(
-        (k, num_episodes))
-    dq_scores, dq_durations, dq_rewards = np.zeros((k, num_episodes)), np.zeros((k, num_episodes)), np.zeros(
-        (k, num_episodes))
-
-    for run in range(k):
-        print(f"\rRun #{run+1}...", end="", flush=True)
-        q_model, q_durations[run, :], q_scores[run, :], q_rewards[run, :] = dqn_experiment(env, num_episodes, double_dqn=False, **hyperparams)
-        dq_model, dq_durations[run, :], dq_scores[run, :], dq_rewards[run, :] = ddqn_experiment(env, num_episodes, double_dqn=True, **hyperparams)
-
-        q_models.append(q_model)
-        dq_models.append(dq_model)
-
-    # Save models
-    for model_type, models in zip(["dqn", "ddqn"], [q_models, dq_models]):
-        for i, model in enumerate(models):
-            torch.save(model, f"{model_path}{env_name}_{model_type}{i}.pt")
-
-    # Get true average q function values
-    true_q = get_actual_returns(env, q_models, hyperparams["discount_factor"])
-    true_dq = get_actual_returns(env, dq_models, hyperparams["discount_factor"])
+def plot_data_for_env(env_name, q_data, dq_data, image_path):
+    q_values, q_rewards, q_durations, true_q = q_data["values"], q_data["rewards"], q_data["durations"], q_data["true"]
+    dq_values, dq_rewards, dq_durations, true_dq = dq_data["values"], dq_data["rewards"], dq_data["durations"], dq_data["true"]
 
     # Do significance-testing
     print(env_name)
     print("Q-values")
-    _, significant_scores = test_difference(q_scores, dq_scores)
+    _, significant_scores = test_difference(q_values, dq_values)
     print("Rewards")
     _, significant_rewards = test_difference(q_rewards, dq_rewards)
     print("Durations")
@@ -136,7 +111,7 @@ def create_plots_for_env(env_name, env, hyperparams, dqn_experiment, ddqn_experi
     print("")
 
     plot_exps_with_intervals(
-        q_scores, dq_scores, title=f"{env_name} Q-Values", file_name=f"{image_path}/qvalues_{env_name.lower()}.png",
+        q_values, dq_values, title=f"{env_name} Q-Values", file_name=f"{image_path}/qvalues_{env_name.lower()}.png",
         smooth_curves=False, true_q=true_q, true_dq=true_dq, significant_values=significant_scores
     )
 
