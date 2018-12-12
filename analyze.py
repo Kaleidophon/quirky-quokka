@@ -6,24 +6,26 @@ Implement functions to analyze the data gathered.
 import numpy as np
 from scipy.stats import mannwhitneyu, shapiro
 import torch
-from gym.spaces import Discrete, Box
+from gym.spaces import Box
 
-# !!!!! important needs to be in line with split in train !!!!!
-split = 9
+SPLITS = 16  # TODO: Pass this as argument
 
 
-def d2c(index, env):
+def discrete_to_continuous(index, env):
     dims = env.action_space.shape[0]
     idx = index
     low = env.action_space.low
     high = env.action_space.high
     interval = high - low
     continuous_actions = []
+
     for i in range(dims):
-        rem = idx % split
-        idx = int(idx / split)
+        rem = idx % SPLITS
+        idx = int(idx / SPLITS)
         continuous_actions.append(rem)
-    continuous_actions = (np.array(continuous_actions)/(split-1))* interval + low
+
+    continuous_actions = (np.array(continuous_actions) / (SPLITS - 1)) * interval + low
+
     return continuous_actions[0]
 
 
@@ -92,7 +94,7 @@ def get_actual_returns(env, models: list, discount_factor):
             actions = model(torch.Tensor(state))
             action = torch.argmax(actions).item()
             if isinstance(env.action_space,Box):
-                action = [d2c(action, env)]
+                action = [discrete_to_continuous(action, env)]
             next_state, reward, done, _ = env.step(action)
 
             returns.append(reward)  # Remember encountered rewards
@@ -113,3 +115,7 @@ def get_actual_returns(env, models: list, discount_factor):
             all_returns.append(G)
 
     return sum(all_returns) / len(all_returns)
+
+
+def load_data(data_path):
+    return np.load(data_path).item()
