@@ -56,7 +56,10 @@ narrow, so there is not much room for maxmization
 bias to occur
 * Due to parameterization with Deep Neural
 Networks, Q-values can be unstable while still
-achieving the objective
+achieving the objective (the "deathly triad" of Reinforcement Learning: Bootstrapping, off-policy learning 
+and function approximation)
+* Unrealistic q-value estimates don't necessarily translate into bad performance (e.g. most MountainCar models
+were still able to solve the environment although using wildly unrealistic estimates)
 
 ## Usage
 
