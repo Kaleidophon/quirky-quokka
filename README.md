@@ -3,8 +3,8 @@
 This project was conducted for the Reinforcement Learning course of the Master Artificial Intelligence at the University 
 of Amsterdam during the Winter term 2018/2019,
 
-<img src="gifs/cartpole.gif" width="450"><img src="gifs/acrobot.gif" width="400"><br>
-<img src="gifs/pendulum.gif" width="450"><img src="gifs/mountain_car.gif" width="400">
+<img src="gifs/cartpole.gif" width="450"><img src="gifs/acrobot.gif" width="350"><br>
+<img src="gifs/pendulum.gif" width="350"><img src="gifs/mountain_car.gif" width="450">
 
 Samples of the performance of Deep Double Q-Learning models on different environments. While it
 is able to solve most of the tasks at hand, it performed visibly worse for Pendulum, where the goal
