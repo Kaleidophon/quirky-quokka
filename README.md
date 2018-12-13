@@ -3,6 +3,13 @@
 This project was conducted for the Reinforcement Learning course of the Master Artificial Intelligence at the University 
 of Amsterdam during the Winter term 2018/2019,
 
+<img src="gifs/cartpole.gif" width="450"><img src="gifs/acrobot.gif" width="400"><br>
+<img src="gifs/pendulum.gif" width="450"><img src="gifs/mountain_car.gif" width="400">
+
+Samples of the performance of Deep Double Q-Learning models on different environments. While it
+is able to solve most of the tasks at hand, it performed visibly worse for Pendulum, where the goal
+is to balance it on top.
+
 ## Introduction
 
 The Q-learning algorithm is known to overestimate state-action values under certain conditions. 
@@ -75,7 +82,8 @@ Then run the training script:
 Models will be saved to the `models/` folder, plots and the data they are based on into `img/` and `data/` respectively.
 Lastly, trained models can also be tested by rendering their environments using
 
-    python3 test.py ./models/<model_name>.pt
+    cd models
+    python3 ../test.py <model_name>.pt
     
 where the environment name has to be included in `<model_name>`.
 
