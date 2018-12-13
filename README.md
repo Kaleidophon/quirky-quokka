@@ -6,7 +6,7 @@ of Amsterdam during the Winter term 2018/2019,
 <img src="gifs/cartpole.gif" height="275"><img src="gifs/acrobot.gif" height="275"><br>
 <img src="gifs/pendulum.gif" height="275"><img src="gifs/mountain_car.gif" height="275">
 
-Samples of the performance of Deep Double Q-Learning models on different environments. While it
+Samples of the performance of Double Deep Q Networks on different environments. While it
 is able to solve most of the tasks at hand, it performed visibly worse for Pendulum, where the goal
 is to balance it on top.
 
@@ -16,7 +16,7 @@ The Q-learning algorithm is known to overestimate state-action values under cert
 A positive bias is introduced, as Q-learning uses the same function to select actions and evaluate a state-action pair. 
 Hence, overoptimistic values are more likely to be used in updates. 
 Hasselt (2016) showed that this can indeed be harmful for performance using Deep Neural Networks and proposed the 
-*Deep Double Q-Learning* algorithm. We apply both algorithms and compare their performance on different environments 
+*Double Deep Q Networks* algorithm. We apply both algorithms and compare their performance on different environments 
 provided by Open AI Gym (Brockman et al., 2016). 
 
 ## Experiments
