@@ -1,7 +1,7 @@
-# Environment-related difference of Deep Q-Learning and Deep Double Q-Learning
+# Environment-related difference of Deep Q-Learning and Double Deep Q-Learning
 
 This project was conducted for the Reinforcement Learning course of the Master Artificial Intelligence at the University 
-of Amsterdam during the Winter term 2018/2019,
+of Amsterdam during the Winter term 2018/2019.
 
 <img src="gifs/cartpole.gif" height="275"><img src="gifs/acrobot.gif" height="275"><br>
 <img src="gifs/pendulum.gif" height="275"><img src="gifs/mountain_car.gif" height="275">
@@ -25,8 +25,9 @@ We used the environments CartPole-v1, Acrobot-v1, MountainCar-v0, Pendulum-v0 fr
 joined grid search over the hyperparameters on random seeds for both models with 10 models each , the best configuration
 was selected based on the highest overall rewards achieved. The hyperparameters can be found in ``hyperparameters.py``.
  
-Afterwards, we trained 15 models on each environment and used a Whitney-Man-U test to test
-whether the significance in Q-value estimates is statistically significant (p=0.05).
+Afterwards, we trained 15 models on each environment and used a two-tailed Mann-Whitney U (Nachar et al., 2008) test to test
+whether the significance in Q-value estimates is statistically significant (p=0.05). The test was chosen because after
+performing Shapiro-Wilk test for normality, most of the distributions could not be shown to be gaussian (p=0.05). 
 
 ## Results
 
@@ -50,7 +51,7 @@ these observations might be due to the complex reward function requiring careful
 DDQN performs better on this task while also having Q-estimates that are closer to the true values
 * Although both algorithms learn to solve the environment **MountainCar-v0**
 , we suspect that using Deep Neural Networks to parameterize the Q-function
-leads to unstable and unrealistic Q-values (non-negative)
+leads to unstable and unrealistic Q-values (non-negative), likely influenced by "deadly triad" (Hasselt et al., 2018).
 
 ## Conclusion 
 
@@ -59,7 +60,7 @@ improvement when using DDQN
 * Whether DDQN improves performance depends on
 the reward structure of the environment, in our
 environments the reward distributions are very
-narrow, so there is not much room for maxmization
+narrow, so there is not much room for maximization
 bias to occur
 * Due to parameterization with Deep Neural
 Networks, Q-values can be unstable while still
@@ -67,6 +68,7 @@ achieving the objective (the "deathly triad" of Reinforcement Learning: Bootstra
 and function approximation)
 * Unrealistic q-value estimates don't necessarily translate into bad performance (e.g. most MountainCar models
 were still able to solve the environment although using wildly unrealistic estimates)
+* Function approximation (Neural Network), bootstrapping and off-policy learning (“deadly triad”) can lead to unstable Q-values while still achieving the objective
 
 ## Usage
 
@@ -85,25 +87,24 @@ Lastly, trained models can also be tested by rendering their environments using
     cd models
     python3 ../test.py <model_name>.pt
     
-where the environment name has to be included in `<model_name>`.
+where the environment name has to be included in `<model_name>`, e.g.
+
+    python3 ../test.py Acrobot-v1_ddqn0.pt
+    
+   
 
 ## References
 
-Hado van Hasselt, Arthur Guez, and David Silver.
-Deep reinforcement learning with double q-learning.
-In
-Proceedings of the Thirtieth AAAI Conference on Artificial
-Intelligence
-, AAAI’16, pages 2094–2100. AAAI Press, 2016.
+Hado V Hasselt. Double q-learning. In Advances in Neural Information Processing Systems, pages 2613–2621, 2010.
 
-Greg Brockman, Vicki Cheung, Ludwig Pettersson, Jonas
-Schneider, John Schulman, Jie Tang, and Wojciech Zaremba.
-Openai gym.
-arXiv preprint arXiv:1606.01540
-, 2016.
+Greg Brockman, Vicki Cheung, Ludwig Pettersson, Jonas Schneider, John Schulman, Jie Tang, and Wojciech Zaremba. Openai gym. arXiv preprint arXiv:1606.01540, 2016.
 
-Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A
-Rusu, Joel Veness, Marc G Bellemare, Alex Graves, Martin
-Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al.
+Nadim Nachar et al. The mann-whitney u: A test for assessing whether two independent samples come from the same distribution. Tutorials in Quantitative Methods for Psychology, 4(1):13–20, 2008.
+
+Hado van Hasselt, Arthur Guez, and David Silver. Deep reinforcement learning with double q-learning. In Proceedings of the Thirtieth AAAI Conference on Artificial Intelligence, AAAI’16, pages 2094–2100. AAAI Press, 2016.
+
+Hado van Hasselt, Yotam Doron, Florian Strub, Matteo Hessel, Nicolas Sonnerat, and Joseph Modayil. Deep reinforcement learning and the deadly triad. arXiv preprint arXiv:1812.02648, 2018.
+
+Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G Bellemare, Alex Graves, Martin Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al. Human-level control through deep reinforcement learning. Nature 518(7540):529, 2015.
 
 

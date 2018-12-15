@@ -1,53 +1,26 @@
 """
-Defining training functions and experiments for the project.
+Easy script to test models and render the corresponding environments.
 """
 
 # STD
 import random
-
-# EXT
-import numpy as np
-import torch
-import torch.optim as optim
-import gym
-import torch.nn.functional as F
-from gym.spaces import Box
 import time
 import sys
 
+# EXT
+import torch
+import gym
+from gym.spaces import Box
+
 # PROJECT
-from models import ReplayMemory, QNetwork
-from train import create_data_for_env
-from hyperparameters import HYPERPARAMETERS
-
-# CONSTANTS
-EPS = float(np.finfo(np.float32).eps)
-ENVIRONMENTS = ["Pendulum-v0", "Acrobot-v1", "MountainCar-v0", "CartPole-v1"]
-SPLITS = 9  # TODO: Pass this as argument
+from analyze import discrete_to_continuous
+from train import ENVIRONMENTS
 
 
-def discrete_to_continuous(index, env):
-    dims = env.action_space.shape[0]
-    idx = index
-    low = env.action_space.low
-    high = env.action_space.high
-    interval = high - low
-    continuous_actions = []
-
-    for i in range(dims):
-        rem = idx % SPLITS
-        idx = int(idx / SPLITS)
-        continuous_actions.append(rem)
-
-    continuous_actions = (np.array(continuous_actions) / (SPLITS - 1)) * interval + low
-
-    return continuous_actions[0]
-
-
-def select_action(model, state, epsilon):
+def select_greedy_action(model, state):
     with torch.no_grad():
         action = model(torch.Tensor(state))
-        return torch.argmax(action).item() if random.random() > epsilon else random.choice([0,1])
+        return torch.argmax(action).item()
 
 
 def test_reinforce_model(model, env, num_episodes):
@@ -58,7 +31,7 @@ def test_reinforce_model(model, env, num_episodes):
         done = False
 
         while not done:
-            action = select_action(model, state, 0)  # Greedy action
+            action = select_greedy_action(model, state)  # Greedy action
             if isinstance(env.action_space, Box):
                 action = [discrete_to_continuous(action, env)]
             next_state, reward, done, _ = env.step(action)

@@ -12,6 +12,7 @@ import functools
 # CONSTANTS
 EPS = float(np.finfo(np.float32).eps)
 
+
 def grid_search(ENVIRONMENTS, hyperparameter_options, num_episodes):
 
     # Let's run it!
@@ -53,7 +54,7 @@ def grid_search(ENVIRONMENTS, hyperparameter_options, num_episodes):
                 model = QNetwork(n_in, n_out, num_hidden)
                 model_2 = QNetwork(n_in, n_out, num_hidden)
 
-                episode_durations_double, cum_reward_double = run_episodes(train, model, memory, env, num_episodes, model_2 = model_2,**current_model_params)
+                episode_durations_double, cum_reward_double = run_episodes(train, model, memory, env, num_episodes, model_2 =model_2,**current_model_params)
 
                 # Calculation best score to select best hyperparameters
                 # best score = sum of cumulative rewards over all episodes and over Double DQN and DQN
@@ -67,16 +68,17 @@ def grid_search(ENVIRONMENTS, hyperparameter_options, num_episodes):
             print(str(best_parameters))
             print("Score:", best_sum_rewards )
 
+
 if __name__ == "__main__":
     ENVIRONMENTS = ['Acrobot-v1']#[['MountainCar-v0'] 'MountainCarContinuous-v0'] # ['MountainCar-v0']  # 'CartPole-v1']]
 
     hyperparameter_opt_mountain_car = {
         "batch_size": [128],
         "discount_factor": [0.9, 0.99],
-        "learn_rate": [0.01,0.001],
+        "learn_rate": [0.01, 0.001],
         "num_hidden": [128],
-        "update_target": [5,10,20]
+        "update_target": [5, 10,20]
     }
 
-    grid_search(ENVIRONMENTS,hyperparameter_opt_mountain_car, num_episodes = 200)
+    grid_search(ENVIRONMENTS,hyperparameter_opt_mountain_car, num_episodes=200)
 

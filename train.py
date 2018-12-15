@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from gym.spaces import Box
 
 # PROJECT
-from analyze import get_actual_returns, discrete_to_continuous, SPLITS, load_data
+from analyze import get_actual_returns, discrete_to_continuous, SPLITS
 from models import ReplayMemory, QNetwork
 from hyperparameters import HYPERPARAMETERS
 from plotting import plot_data_for_env
